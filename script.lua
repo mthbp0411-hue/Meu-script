@@ -15,8 +15,12 @@ local Config = {
     AutoFarm = false,
     AutoCollect = false,
     AntiAFK = true,
-    Speed = 16,
-    JumpPower = 50
+
+    SpeedEnabled = false,
+    Speed = 50,
+
+    JumpEnabled = false,
+    JumpPower = 100
 }
 
 --==================================================
@@ -136,7 +140,7 @@ cc.CornerRadius = UDim.new(0,8)
 cc.Parent = closeButton
 
 --==================================================
--- BOTÃO RESTAURAR
+-- RESTAURAR
 --==================================================
 
 local restoreButton = Instance.new("TextButton")
@@ -168,32 +172,28 @@ local function getHumanoid()
 end
 
 --==================================================
--- AUTO FARM
+-- FARM
 --==================================================
 
-local function findNearestObject()
-    if not Config.AutoFarm then
-        return nil
-    end
+local function getTargets()
 
     local char = getCharacter()
     local root = char:FindFirstChild("HumanoidRootPart")
 
     if not root then
-        return nil
+        return {}
     end
 
-    local nearest
-    local distance = math.huge
+    local targets = {}
 
     for _, obj in ipairs(workspace:GetDescendants()) do
 
-        -- Se desligou durante a procura, para imediatamente
         if not Config.AutoFarm then
-            return nil
+            break
         end
 
         if obj:IsA("BasePart") then
+
             local name = obj.Name:lower()
 
             if name:find("break")
@@ -201,46 +201,58 @@ local function findNearestObject()
             or name:find("chest")
             or name:find("present") then
 
-                local d = (obj.Position - root.Position).Magnitude
+                table.insert(targets, {
+                    Object = obj,
+                    Distance = (obj.Position - root.Position).Magnitude
+                })
 
-                if d < distance then
-                    distance = d
-                    nearest = obj
-                end
             end
         end
     end
 
-    return nearest
+    table.sort(targets, function(a,b)
+        return a.Distance < b.Distance
+    end)
+
+    return targets
 end
 
 local function farm()
 
-    -- Não faz nada se estiver desligado
     if not Config.AutoFarm then
         return
     end
 
-    local target = findNearestObject()
+    local targets = getTargets()
 
-    -- Confere novamente antes de teleportar
-    if not Config.AutoFarm then
-        return
-    end
+    for _, data in ipairs(targets) do
 
-    if target and target.Parent then
+        if not Config.AutoFarm then
+            return
+        end
 
-        local char = getCharacter()
-        local root = char:FindFirstChild("HumanoidRootPart")
+        local target = data.Object
 
-        if root and Config.AutoFarm then
-            root.CFrame = target.CFrame * CFrame.new(0,0,5)
+        if target and target.Parent then
+
+            local char = getCharacter()
+            local root = char:FindFirstChild("HumanoidRootPart")
+
+            if root then
+
+                root.CFrame =
+                    target.CFrame *
+                    CFrame.new(0,0,5)
+
+                task.wait(0.08)
+
+            end
         end
     end
 end
 
 --==================================================
--- BUTTONS
+-- FARM BUTTON
 --==================================================
 
 farmButton.MouseButton1Click:Connect(function()
@@ -252,7 +264,12 @@ farmButton.MouseButton1Click:Connect(function()
     else
         farmButton.Text = "Auto Farm: OFF"
     end
+
 end)
+
+--==================================================
+-- AUTO COLLECT
+--==================================================
 
 collectButton.MouseButton1Click:Connect(function()
 
@@ -262,40 +279,63 @@ collectButton.MouseButton1Click:Connect(function()
         Config.AutoCollect
         and "Auto Collect: ON"
         or "Auto Collect: OFF"
+
 end)
+
+--==================================================
+-- SPEED
+--==================================================
 
 speedButton.MouseButton1Click:Connect(function()
 
+    Config.SpeedEnabled = not Config.SpeedEnabled
+
     local humanoid = getHumanoid()
 
     if humanoid then
 
-        if humanoid.WalkSpeed == 16 then
-            humanoid.WalkSpeed = 50
+        if Config.SpeedEnabled then
+
+            humanoid.WalkSpeed = Config.Speed
             speedButton.Text = "Speed: ON"
+
         else
+
             humanoid.WalkSpeed = 16
             speedButton.Text = "Speed: OFF"
+
         end
 
     end
+
 end)
+
+--==================================================
+-- JUMP
+--==================================================
 
 jumpButton.MouseButton1Click:Connect(function()
 
+    Config.JumpEnabled = not Config.JumpEnabled
+
     local humanoid = getHumanoid()
 
     if humanoid then
 
-        if humanoid.JumpPower == 50 then
-            humanoid.JumpPower = 100
+        if Config.JumpEnabled then
+
+            humanoid.JumpPower = Config.JumpPower
             jumpButton.Text = "JumpPower: ON"
+
         else
+
             humanoid.JumpPower = 50
             jumpButton.Text = "JumpPower: OFF"
+
         end
 
     end
+
 end)
 
 --==================================================
@@ -314,6 +354,7 @@ teleportButton.MouseButton1Click:Connect(function()
             CFrame.new(0,5,0)
 
     end
+
 end)
 
 --==================================================
@@ -343,7 +384,7 @@ restoreButton.MouseButton1Click:Connect(function()
 end)
 
 --==================================================
--- FECHAR COMPLETAMENTE
+-- FECHAR
 --==================================================
 
 closeButton.MouseButton1Click:Connect(function()
@@ -356,18 +397,18 @@ closeButton.MouseButton1Click:Connect(function()
 end)
 
 --==================================================
--- AUTO FARM LOOP
+-- FARM LOOP
 --==================================================
 
 task.spawn(function()
 
     while gui.Parent do
 
-        task.wait(0.5)
-
         if Config.AutoFarm then
             pcall(farm)
         end
+
+        task.wait(0.15)
 
     end
 
@@ -384,6 +425,26 @@ player.Idled:Connect(function()
         VirtualUser:CaptureController()
         VirtualUser:ClickButton2(Vector2.new())
 
+    end
+
+end)
+
+--==================================================
+-- RESPAWN
+--==================================================
+
+player.CharacterAdded:Connect(function(character)
+
+    local humanoid = character:WaitForChild("Humanoid")
+
+    task.wait(0.5)
+
+    if Config.SpeedEnabled then
+        humanoid.WalkSpeed = Config.Speed
+    end
+
+    if Config.JumpEnabled then
+        humanoid.JumpPower = Config.JumpPower
     end
 
 end)
