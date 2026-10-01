@@ -52,15 +52,24 @@ title.TextSize = 20
 title.Font = Enum.Font.GothamBold
 title.Parent = main
 
+--==================================================
+-- BOTÃO PADRÃO
+--==================================================
+
 local function Button(text, y)
+
     local button = Instance.new("TextButton")
+
     button.Size = UDim2.new(0,180,0,40)
     button.Position = UDim2.new(0,15,0,y)
+
     button.BackgroundColor3 = Color3.fromRGB(40,40,40)
     button.TextColor3 = Color3.new(1,1,1)
+
     button.TextSize = 14
     button.Font = Enum.Font.GothamBold
     button.Text = text
+
     button.Parent = main
 
     local c = Instance.new("UICorner")
@@ -70,33 +79,53 @@ local function Button(text, y)
     return button
 end
 
+--==================================================
+-- BOTÕES
+--==================================================
+
 local farmButton = Button("Auto Farm: OFF",60)
 local collectButton = Button("Auto Collect: OFF",110)
 local speedButton = Button("Speed: OFF",160)
 local jumpButton = Button("JumpPower: OFF",210)
 
+--==================================================
+-- TELEPORT
+--==================================================
+
 local teleportButton = Instance.new("TextButton")
+
 teleportButton.Size = UDim2.new(0,180,0,40)
 teleportButton.Position = UDim2.new(0,215,0,60)
+
 teleportButton.BackgroundColor3 = Color3.fromRGB(40,40,40)
 teleportButton.TextColor3 = Color3.new(1,1,1)
+
 teleportButton.TextSize = 14
 teleportButton.Font = Enum.Font.GothamBold
 teleportButton.Text = "Teleport Spawn"
+
 teleportButton.Parent = main
 
 local tc = Instance.new("UICorner")
 tc.CornerRadius = UDim.new(0,8)
 tc.Parent = teleportButton
 
+--==================================================
+-- REJOIN
+--==================================================
+
 local rejoinButton = Instance.new("TextButton")
+
 rejoinButton.Size = UDim2.new(0,180,0,40)
 rejoinButton.Position = UDim2.new(0,215,0,110)
+
 rejoinButton.BackgroundColor3 = Color3.fromRGB(40,40,40)
 rejoinButton.TextColor3 = Color3.new(1,1,1)
+
 rejoinButton.TextSize = 14
 rejoinButton.Font = Enum.Font.GothamBold
 rejoinButton.Text = "Rejoin Server"
+
 rejoinButton.Parent = main
 
 local rc = Instance.new("UICorner")
@@ -108,13 +137,17 @@ rc.Parent = rejoinButton
 --==================================================
 
 local minimizeButton = Instance.new("TextButton")
+
 minimizeButton.Size = UDim2.new(0,180,0,40)
 minimizeButton.Position = UDim2.new(0,215,0,160)
+
 minimizeButton.BackgroundColor3 = Color3.fromRGB(55,55,55)
 minimizeButton.TextColor3 = Color3.new(1,1,1)
+
 minimizeButton.TextSize = 14
 minimizeButton.Font = Enum.Font.GothamBold
 minimizeButton.Text = "Minimizar"
+
 minimizeButton.Parent = main
 
 local mc = Instance.new("UICorner")
@@ -126,13 +159,17 @@ mc.Parent = minimizeButton
 --==================================================
 
 local closeButton = Instance.new("TextButton")
+
 closeButton.Size = UDim2.new(0,180,0,40)
 closeButton.Position = UDim2.new(0,215,0,210)
+
 closeButton.BackgroundColor3 = Color3.fromRGB(130,40,40)
 closeButton.TextColor3 = Color3.new(1,1,1)
+
 closeButton.TextSize = 14
 closeButton.Font = Enum.Font.GothamBold
 closeButton.Text = "Fechar Hub"
+
 closeButton.Parent = main
 
 local cc = Instance.new("UICorner")
@@ -144,13 +181,17 @@ cc.Parent = closeButton
 --==================================================
 
 local restoreButton = Instance.new("TextButton")
+
 restoreButton.Size = UDim2.new(0,55,0,55)
 restoreButton.Position = UDim2.new(0,15,0.5,-27)
+
 restoreButton.BackgroundColor3 = Color3.fromRGB(25,25,25)
 restoreButton.TextColor3 = Color3.new(1,1,1)
+
 restoreButton.TextSize = 25
 restoreButton.Font = Enum.Font.GothamBold
 restoreButton.Text = "🐾"
+
 restoreButton.Visible = false
 restoreButton.Parent = gui
 
@@ -163,24 +204,61 @@ restoreCorner.Parent = restoreButton
 --==================================================
 
 local function getCharacter()
+
     return player.Character or player.CharacterAdded:Wait()
+
 end
 
 local function getHumanoid()
+
     local char = getCharacter()
+
     return char:FindFirstChildOfClass("Humanoid")
+
+end
+
+local function getRoot()
+
+    local char = getCharacter()
+
+    return char:FindFirstChild("HumanoidRootPart")
+
 end
 
 --==================================================
 -- FARM
 --==================================================
 
+local farmCenter = nil
+
+local FARM_RADIUS = 180
+
+-- Guarda a posição onde o Farm foi ativado.
+-- O Farm trabalha somente nessa área.
+
+local function setFarmArea()
+
+    local root = getRoot()
+
+    if root then
+        farmCenter = root.Position
+    end
+
+end
+
+--==================================================
+-- ENCONTRAR ALVOS DA ÁREA
+--==================================================
+
 local function getTargets()
 
-    local char = getCharacter()
-    local root = char:FindFirstChild("HumanoidRootPart")
+    if not Config.AutoFarm then
+        return {}
+    end
 
-    if not root then
+    local root = getRoot()
+
+    if not root or not farmCenter then
         return {}
     end
 
@@ -189,38 +267,67 @@ local function getTargets()
     for _, obj in ipairs(workspace:GetDescendants()) do
 
         if not Config.AutoFarm then
-            break
+            return {}
         end
 
         if obj:IsA("BasePart") then
 
             local name = obj.Name:lower()
 
-            if name:find("break")
-            or name:find("coin")
-            or name:find("chest")
-            or name:find("present") then
+            local validName =
+                name:find("break")
+                or name:find("coin")
+                or name:find("chest")
+                or name:find("present")
 
-                table.insert(targets, {
-                    Object = obj,
-                    Distance = (obj.Position - root.Position).Magnitude
-                })
+            if validName then
+
+                local areaDistance =
+                    (obj.Position - farmCenter).Magnitude
+
+                if areaDistance <= FARM_RADIUS then
+
+                    local playerDistance =
+                        (obj.Position - root.Position).Magnitude
+
+                    table.insert(targets, {
+
+                        Object = obj,
+
+                        Distance = playerDistance
+
+                    })
+
+                end
 
             end
+
         end
+
     end
 
     table.sort(targets, function(a,b)
+
         return a.Distance < b.Distance
+
     end)
 
     return targets
+
 end
+
+--==================================================
+-- FARM
+--==================================================
 
 local function farm()
 
     if not Config.AutoFarm then
         return
+    end
+
+    if not farmCenter then
+        setFarmArea()
     end
 
     local targets = getTargets()
@@ -235,8 +342,7 @@ local function farm()
 
         if target and target.Parent then
 
-            local char = getCharacter()
-            local root = char:FindFirstChild("HumanoidRootPart")
+            local root = getRoot()
 
             if root then
 
@@ -247,12 +353,15 @@ local function farm()
                 task.wait(0.08)
 
             end
+
         end
+
     end
+
 end
 
 --==================================================
--- FARM BUTTON
+-- AUTO FARM BUTTON
 --==================================================
 
 farmButton.MouseButton1Click:Connect(function()
@@ -260,9 +369,19 @@ farmButton.MouseButton1Click:Connect(function()
     Config.AutoFarm = not Config.AutoFarm
 
     if Config.AutoFarm then
+
+        -- Define a área atual como a área do Farm
+        setFarmArea()
+
         farmButton.Text = "Auto Farm: ON"
+
     else
+
+        -- Libera a área salva
+        farmCenter = nil
+
         farmButton.Text = "Auto Farm: OFF"
+
     end
 
 end)
@@ -288,7 +407,8 @@ end)
 
 speedButton.MouseButton1Click:Connect(function()
 
-    Config.SpeedEnabled = not Config.SpeedEnabled
+    Config.SpeedEnabled =
+        not Config.SpeedEnabled
 
     local humanoid = getHumanoid()
 
@@ -296,13 +416,19 @@ speedButton.MouseButton1Click:Connect(function()
 
         if Config.SpeedEnabled then
 
-            humanoid.WalkSpeed = Config.Speed
-            speedButton.Text = "Speed: ON"
+            humanoid.WalkSpeed =
+                Config.Speed
+
+            speedButton.Text =
+                "Speed: ON"
 
         else
 
-            humanoid.WalkSpeed = 16
-            speedButton.Text = "Speed: OFF"
+            humanoid.WalkSpeed =
+                16
+
+            speedButton.Text =
+                "Speed: OFF"
 
         end
 
@@ -311,12 +437,13 @@ speedButton.MouseButton1Click:Connect(function()
 end)
 
 --==================================================
--- JUMP
+-- JUMP POWER
 --==================================================
 
 jumpButton.MouseButton1Click:Connect(function()
 
-    Config.JumpEnabled = not Config.JumpEnabled
+    Config.JumpEnabled =
+        not Config.JumpEnabled
 
     local humanoid = getHumanoid()
 
@@ -324,13 +451,19 @@ jumpButton.MouseButton1Click:Connect(function()
 
         if Config.JumpEnabled then
 
-            humanoid.JumpPower = Config.JumpPower
-            jumpButton.Text = "JumpPower: ON"
+            humanoid.JumpPower =
+                Config.JumpPower
+
+            jumpButton.Text =
+                "JumpPower: ON"
 
         else
 
-            humanoid.JumpPower = 50
-            jumpButton.Text = "JumpPower: OFF"
+            humanoid.JumpPower =
+                50
+
+            jumpButton.Text =
+                "JumpPower: OFF"
 
         end
 
@@ -339,18 +472,20 @@ jumpButton.MouseButton1Click:Connect(function()
 end)
 
 --==================================================
--- TELEPORT
+-- TELEPORT SPAWN
 --==================================================
 
 teleportButton.MouseButton1Click:Connect(function()
 
-    local char = getCharacter()
-    local root = char:FindFirstChild("HumanoidRootPart")
+    local root = getRoot()
 
-    if root and workspace:FindFirstChild("SpawnLocation") then
+    local spawn =
+        workspace:FindFirstChild("SpawnLocation")
+
+    if root and spawn then
 
         root.CFrame =
-            workspace.SpawnLocation.CFrame *
+            spawn.CFrame *
             CFrame.new(0,5,0)
 
     end
@@ -362,7 +497,12 @@ end)
 --==================================================
 
 rejoinButton.MouseButton1Click:Connect(function()
-    TeleportService:Teleport(game.PlaceId, player)
+
+    TeleportService:Teleport(
+        game.PlaceId,
+        player
+    )
+
 end)
 
 --==================================================
@@ -372,6 +512,7 @@ end)
 minimizeButton.MouseButton1Click:Connect(function()
 
     main.Visible = false
+
     restoreButton.Visible = true
 
 end)
@@ -379,6 +520,7 @@ end)
 restoreButton.MouseButton1Click:Connect(function()
 
     main.Visible = true
+
     restoreButton.Visible = false
 
 end)
@@ -391,6 +533,8 @@ closeButton.MouseButton1Click:Connect(function()
 
     Config.AutoFarm = false
     Config.AutoCollect = false
+
+    farmCenter = nil
 
     gui:Destroy()
 
@@ -405,7 +549,11 @@ task.spawn(function()
     while gui.Parent do
 
         if Config.AutoFarm then
-            pcall(farm)
+
+            pcall(function()
+                farm()
+            end)
+
         end
 
         task.wait(0.15)
@@ -423,7 +571,10 @@ player.Idled:Connect(function()
     if Config.AntiAFK then
 
         VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new())
+
+        VirtualUser:ClickButton2(
+            Vector2.new()
+        )
 
     end
 
@@ -435,16 +586,23 @@ end)
 
 player.CharacterAdded:Connect(function(character)
 
-    local humanoid = character:WaitForChild("Humanoid")
+    local humanoid =
+        character:WaitForChild("Humanoid")
 
     task.wait(0.5)
 
     if Config.SpeedEnabled then
-        humanoid.WalkSpeed = Config.Speed
+
+        humanoid.WalkSpeed =
+            Config.Speed
+
     end
 
     if Config.JumpEnabled then
-        humanoid.JumpPower = Config.JumpPower
+
+        humanoid.JumpPower =
+            Config.JumpPower
+
     end
 
 end)
