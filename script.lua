@@ -2,7 +2,6 @@
 --// Luau / Roblox
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
 local VirtualUser = game:GetService("VirtualUser")
 
@@ -100,9 +99,31 @@ local rc = Instance.new("UICorner")
 rc.CornerRadius = UDim.new(0,8)
 rc.Parent = rejoinButton
 
+--==================================================
+-- MINIMIZAR
+--==================================================
+
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Size = UDim2.new(0,180,0,40)
+minimizeButton.Position = UDim2.new(0,215,0,160)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(55,55,55)
+minimizeButton.TextColor3 = Color3.new(1,1,1)
+minimizeButton.TextSize = 14
+minimizeButton.Font = Enum.Font.GothamBold
+minimizeButton.Text = "Minimizar"
+minimizeButton.Parent = main
+
+local mc = Instance.new("UICorner")
+mc.CornerRadius = UDim.new(0,8)
+mc.Parent = minimizeButton
+
+--==================================================
+-- FECHAR
+--==================================================
+
 local closeButton = Instance.new("TextButton")
 closeButton.Size = UDim2.new(0,180,0,40)
-closeButton.Position = UDim2.new(0,215,0,160)
+closeButton.Position = UDim2.new(0,215,0,210)
 closeButton.BackgroundColor3 = Color3.fromRGB(130,40,40)
 closeButton.TextColor3 = Color3.new(1,1,1)
 closeButton.TextSize = 14
@@ -113,6 +134,25 @@ closeButton.Parent = main
 local cc = Instance.new("UICorner")
 cc.CornerRadius = UDim.new(0,8)
 cc.Parent = closeButton
+
+--==================================================
+-- BOTÃO RESTAURAR
+--==================================================
+
+local restoreButton = Instance.new("TextButton")
+restoreButton.Size = UDim2.new(0,55,0,55)
+restoreButton.Position = UDim2.new(0,15,0.5,-27)
+restoreButton.BackgroundColor3 = Color3.fromRGB(25,25,25)
+restoreButton.TextColor3 = Color3.new(1,1,1)
+restoreButton.TextSize = 25
+restoreButton.Font = Enum.Font.GothamBold
+restoreButton.Text = "🐾"
+restoreButton.Visible = false
+restoreButton.Parent = gui
+
+local restoreCorner = Instance.new("UICorner")
+restoreCorner.CornerRadius = UDim.new(1,0)
+restoreCorner.Parent = restoreButton
 
 --==================================================
 -- CHARACTER
@@ -128,10 +168,14 @@ local function getHumanoid()
 end
 
 --==================================================
--- AUTO FARM BASE
+-- AUTO FARM
 --==================================================
 
 local function findNearestObject()
+    if not Config.AutoFarm then
+        return nil
+    end
+
     local char = getCharacter()
     local root = char:FindFirstChild("HumanoidRootPart")
 
@@ -143,6 +187,12 @@ local function findNearestObject()
     local distance = math.huge
 
     for _, obj in ipairs(workspace:GetDescendants()) do
+
+        -- Se desligou durante a procura, para imediatamente
+        if not Config.AutoFarm then
+            return nil
+        end
+
         if obj:IsA("BasePart") then
             local name = obj.Name:lower()
 
@@ -165,16 +215,26 @@ local function findNearestObject()
 end
 
 local function farm()
+
+    -- Não faz nada se estiver desligado
+    if not Config.AutoFarm then
+        return
+    end
+
     local target = findNearestObject()
 
-    if target then
+    -- Confere novamente antes de teleportar
+    if not Config.AutoFarm then
+        return
+    end
+
+    if target and target.Parent then
+
         local char = getCharacter()
         local root = char:FindFirstChild("HumanoidRootPart")
 
-        if root then
-            root.CFrame =
-                target.CFrame *
-                CFrame.new(0,0,5)
+        if root and Config.AutoFarm then
+            root.CFrame = target.CFrame * CFrame.new(0,0,5)
         end
     end
 end
@@ -184,15 +244,18 @@ end
 --==================================================
 
 farmButton.MouseButton1Click:Connect(function()
+
     Config.AutoFarm = not Config.AutoFarm
 
-    farmButton.Text =
-        Config.AutoFarm
-        and "Auto Farm: ON"
-        or "Auto Farm: OFF"
+    if Config.AutoFarm then
+        farmButton.Text = "Auto Farm: ON"
+    else
+        farmButton.Text = "Auto Farm: OFF"
+    end
 end)
 
 collectButton.MouseButton1Click:Connect(function()
+
     Config.AutoCollect = not Config.AutoCollect
 
     collectButton.Text =
@@ -202,9 +265,11 @@ collectButton.MouseButton1Click:Connect(function()
 end)
 
 speedButton.MouseButton1Click:Connect(function()
+
     local humanoid = getHumanoid()
 
     if humanoid then
+
         if humanoid.WalkSpeed == 16 then
             humanoid.WalkSpeed = 50
             speedButton.Text = "Speed: ON"
@@ -212,13 +277,16 @@ speedButton.MouseButton1Click:Connect(function()
             humanoid.WalkSpeed = 16
             speedButton.Text = "Speed: OFF"
         end
+
     end
 end)
 
 jumpButton.MouseButton1Click:Connect(function()
+
     local humanoid = getHumanoid()
 
     if humanoid then
+
         if humanoid.JumpPower == 50 then
             humanoid.JumpPower = 100
             jumpButton.Text = "JumpPower: ON"
@@ -226,26 +294,65 @@ jumpButton.MouseButton1Click:Connect(function()
             humanoid.JumpPower = 50
             jumpButton.Text = "JumpPower: OFF"
         end
+
     end
 end)
 
+--==================================================
+-- TELEPORT
+--==================================================
+
 teleportButton.MouseButton1Click:Connect(function()
+
     local char = getCharacter()
     local root = char:FindFirstChild("HumanoidRootPart")
 
     if root and workspace:FindFirstChild("SpawnLocation") then
+
         root.CFrame =
             workspace.SpawnLocation.CFrame *
             CFrame.new(0,5,0)
+
     end
 end)
+
+--==================================================
+-- REJOIN
+--==================================================
 
 rejoinButton.MouseButton1Click:Connect(function()
     TeleportService:Teleport(game.PlaceId, player)
 end)
 
+--==================================================
+-- MINIMIZAR
+--==================================================
+
+minimizeButton.MouseButton1Click:Connect(function()
+
+    main.Visible = false
+    restoreButton.Visible = true
+
+end)
+
+restoreButton.MouseButton1Click:Connect(function()
+
+    main.Visible = true
+    restoreButton.Visible = false
+
+end)
+
+--==================================================
+-- FECHAR COMPLETAMENTE
+--==================================================
+
 closeButton.MouseButton1Click:Connect(function()
+
+    Config.AutoFarm = false
+    Config.AutoCollect = false
+
     gui:Destroy()
+
 end)
 
 --==================================================
@@ -253,11 +360,17 @@ end)
 --==================================================
 
 task.spawn(function()
-    while task.wait(0.5) do
+
+    while gui.Parent do
+
+        task.wait(0.5)
+
         if Config.AutoFarm then
             pcall(farm)
         end
+
     end
+
 end)
 
 --==================================================
@@ -265,10 +378,14 @@ end)
 --==================================================
 
 player.Idled:Connect(function()
+
     if Config.AntiAFK then
+
         VirtualUser:CaptureController()
         VirtualUser:ClickButton2(Vector2.new())
+
     end
+
 end)
 
 print("PS99 Championship Hub carregado!")
